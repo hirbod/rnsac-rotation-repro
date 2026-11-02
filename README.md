@@ -1,31 +1,31 @@
-# react-native-safe-area-context: stale insets in a form sheet after rotation (iOS, Fabric)
+# Stale SafeAreaView insets in a native sheet after rotation
 
-Repro for [appandflow/react-native-safe-area-context#781](https://github.com/appandflow/react-native-safe-area-context/issues/781) and [#802](https://github.com/appandflow/react-native-safe-area-context/issues/802).
+Repro for [#781](https://github.com/appandflow/react-native-safe-area-context/issues/781) and [#802](https://github.com/appandflow/react-native-safe-area-context/issues/802) in react-native-safe-area-context. The fix is in [#803](https://github.com/appandflow/react-native-safe-area-context/pull/803).
 
-Expo SDK 58, React Native 0.88.1, react-native-screens 4.30.1, react-native-safe-area-context 5.11.0, iOS 27 simulator (iPhone 18 Pro).
+It's a `SafeAreaView` with left and right edges, in a `ScrollView`, in an Expo Router `formSheet` (see `src/app/sheet.tsx`). The layout keeps the UI and JS threads busy, like an app with a 3D view would (see `src/app/_layout.tsx`).
 
-`src/app/sheet.tsx`: a `SafeAreaView edges={['left', 'right']}` in a `ScrollView` in an Expo Router `formSheet`. `src/app/_layout.tsx` keeps the UI thread and the JS thread busy, as in an app with a 3D view.
+Built with Expo SDK 58, RN 0.88.1, react-native-screens 4.30.1 and react-native-safe-area-context 5.11.0, on an iOS 27 simulator.
 
 ## Steps
 
-1. `npm install && npx expo run:ios`
-2. Tap **Open sheet**.
-3. Rotate landscape left → landscape right → portrait.
+1. `npm install`, then `npx expo run:ios`
+2. Tap **Open sheet**
+3. Rotate to landscape left, then landscape right, then back to portrait
 
-The red frame should clear the notch in landscape and reach both sides in portrait.
+The red frame should stay clear of the notch in landscape and reach both edges in portrait.
 
-## Result
+## What you'll see
 
 ![Before and after, 4x slower](media/before-after-4x-slow.gif)
 
-([MP4](media/before-after-4x-slow.mp4))
+Left is 5.11.0. Back in portrait the frame keeps the landscape inset until React commits again, because the sheet sits outside the provider and nothing tells the view its insets changed (#781).
 
-| Build | Result |
-|---|---|
-| 5.11.0 | In portrait, the frame keeps the landscape inset (62 pt) until the next React commit. The sheet is outside the provider's view tree, so the view is its own provider, and nothing tells it that its insets changed (#781). |
-| + `safeAreaInsetsDidChange` | Insets follow, but in landscape the frame stays under the notch for about 8 frames: the async state update waits for the busy threads (#802). |
-| + `unstable_Immediate` | Correct on every frame. |
+Middle adds a `safeAreaInsetsDidChange` override. The insets follow now, but in landscape the frame stays under the notch for a few frames, because the async state update waits for the next event beat (#802).
 
-## Fix
+Right also passes `unstable_Immediate`, like react-native-screens does for its screen state. Every frame is correct.
 
-`fix.patch` has both changes: `patch -p1 < fix.patch`, then `npx expo run:ios`.
+There's also an [MP4](media/before-after-4x-slow.mp4) of the same clip.
+
+## Trying the fix
+
+`fix.patch` has both changes. Run `patch -p1 < fix.patch`, then `npx expo run:ios` again.
