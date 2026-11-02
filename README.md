@@ -29,3 +29,5 @@ There's also an [MP4](media/before-after-4x-slow.mp4) of the same clip.
 ## Trying the fix
 
 `fix.patch` has both changes. Run `patch -p1 < fix.patch`, then `npx expo run:ios` again.
+
+On this branch, `fix.patch` matches the latest commit of #803 ([`9e0134d`](https://github.com/hirbod/react-native-safe-area-context/commit/9e0134d)). It only uses `unstable_Immediate` where React Native has it, so it also builds on RN 0.81 and older.
